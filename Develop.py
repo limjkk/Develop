@@ -4,6 +4,9 @@ def onChange(pos):
     pass
 
 src = cv2.imread("/Users/lim/lena2.bmp", cv2.IMREAD_GRAYSCALE)
+
+
+
 #src = cv2.VideoCapture(0)
 cv2.namedWindow("Trackbar Windows")
 
