@@ -5,7 +5,7 @@ import sys
 import cv2
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 import numpy as np
-
+import time
 
 class VideoThread(QThread):
     change_pixmap_signal = pyqtSignal(np.ndarray)
@@ -33,20 +33,61 @@ class ImageThread(QThread):
     def __init__(self):
         super().__init__()
         self._run_flag = True
-        self.Image = ""
+        self.ImageL = ""
+        self.Image = 0
     def run(self):
         # capture from web cam
-        cap = cv2.imread(self.Image,cv2.IMREAD_COLOR)
-        self.change_pixmap_signal.emit(cap)
+        self.Image = cv2.imread(self.ImageL,cv2.IMREAD_COLOR)
+        self.change_pixmap_signal.emit(self.Image)
         # shut down capture system
     def stop(self):
         """Sets run flag to False and waits for thread to finish"""
         self._run_flag = False
         self.wait()
-    def setFileName(self,Image):
-        self.Image = Image
+    def setFileName(self,ImageL):
+        self.ImageL = ImageL
+        print(self.ImageL)
     def getFileName(self):
         return self.Image
+    def Threshold(self,High,Low):
+        self.Image = cv2.imread(self.ImageL,cv2.IMREAD_COLOR)
+        image_data = np.asarray(self.Image)
+        for i in range(len(image_data)):
+            for j in range(len(image_data[0])):
+                if(image_data[i][j][0] < High):
+                    image_data[i][j] = 255
+        self.image2 = image_data
+        self.change_pixmap_signal.emit(self.image2)
+
+    def SobelX(self):
+        sobel_Xfilter = np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
+        self.Image = cv2.imread(self.ImageL,cv2.IMREAD_COLOR)
+        image_data = np.asarray(self.Image)
+        for width in range(0,len(image_data)-3,3):
+            for height in range(3,len(image_data[0])-3,3):
+                for i in range(0,3):
+                    for j in range(0,3):
+                        image_data[width+i][height+j] = image_data[width+i][height+j][0] * sobel_Xfilter[i][j]
+        self.image2 = image_data
+        self.change_pixmap_signal.emit(self.image2)
+        return self.image2
+    def SobelY(self):
+        sobel_Yfilter = np.array([[1,2,1],[0,0,0],[-1,-2,-1]])
+        self.Image = cv2.imread(self.ImageL,cv2.IMREAD_COLOR)
+        image_data = np.asarray(self.Image)
+        for width in range(0,len(image_data)-3,3):
+            for height in range(3,len(image_data[0])-3,3):
+                for i in range(0,3):
+                    for j in range(0,3):
+                        image_data[width+i][height+j] = image_data[width+i][height+j][0] * sobel_Yfilter[i][j]
+        self.image2 = image_data
+        self.change_pixmap_signal.emit(self.image2)
+        return self.image2
+    def SobelXY(self):
+        SobelX = self.SobelX()
+        SobelY = self.SobelX()
+        Sobel = SobelX + SobelY
+        self.change_pixmap_signal.emit(Sobel)
 class App(QWidget):
     def __init__(self):
         super().__init__()
@@ -72,7 +113,13 @@ class App(QWidget):
         self.slider.setRange(0,255)
         self.slider.valueChanged.connect(self.value_changed)
         self.Videothread = VideoThread()
+
         self.Imagethread = ImageThread()
+        #self.Imagethread.setFileName("/Users/lim/Desktop/lena.png")
+        self.Imagethread.setFileName("/Users/lim/Desktop/Rectangle.png")
+        self.Imagethread.change_pixmap_signal.connect(self.update_image)
+        # start the thread
+        self.Imagethread.start()
         ###
         vbox = QVBoxLayout()
         vbox.addWidget(self.image_label)
@@ -88,6 +135,8 @@ class App(QWidget):
         # create the video capture thread
     def value_changed(self,value):
         print(value)
+        #self.Imagethread.Threshold(value,255)
+        self.Imagethread.SobelX()
     def FileLoad(self):
         fname = QFileDialog.getOpenFileName(self)
         # connect its signal to the update_image slot
